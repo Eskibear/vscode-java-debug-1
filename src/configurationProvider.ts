@@ -4,6 +4,7 @@
 import * as vscode from "vscode";
 import * as commands from "./commands";
 import { logger, Type } from "./logger";
+import { spawnJavaProcessWithoutDebugging } from "./noDebugMode";
 import * as utility from "./utility";
 
 export class JavaDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
@@ -157,15 +158,21 @@ export class JavaDebugConfigurationProvider implements vscode.DebugConfiguration
                 }
                 return undefined;
             }
-            const debugServerPort = await startDebugSession();
-            if (debugServerPort) {
+            if (config.noDebug) {
+                const debugServerPort = await spawnJavaProcessWithoutDebugging(config);
                 config.debugServer = debugServerPort;
                 return config;
             } else {
-                logger.logMessage(Type.EXCEPTION, "Failed to start debug server.");
-                // Information for diagnostic:
-                console.log("Cannot find a port for debugging session");
-                return undefined;
+                const debugServerPort = await startDebugSession();
+                if (debugServerPort) {
+                    config.debugServer = debugServerPort;
+                    return config;
+                } else {
+                    logger.logMessage(Type.EXCEPTION, "Failed to start debug server.");
+                    // Information for diagnostic:
+                    console.log("Cannot find a port for debugging session");
+                    return undefined;
+                }
             }
         } catch (ex) {
             const errorMessage = (ex && ex.message) || ex;
